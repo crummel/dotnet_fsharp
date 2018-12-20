@@ -36,22 +36,41 @@
 
 // 
 // Generate C# (oracle.cs)
-printfn "using System.Collections.Generic;"
-printfn "public class CSharpLibrary"
-printfn "{"
-printfn "    static public IEnumerable<int> input()"
-printfn "    {"
-for a in [0 .. 0x123] do
-    printfn "        yield return (int)(\"\\u%04x\".Normalize(System.Text.NormalizationForm.FormD)[0]);" a
-printfn "    }"
-printfn "    static void Main()"
-printfn "    {"
-printfn "       int i = 0;"
-printfn "       System.Console.WriteLine(\"module N.M\");"
-printfn "       foreach(var v in input())"
-printfn "       {"
-printfn "           System.Console.WriteLine(\"if {0} <> int (\\\"\\\\u{1:X4}\\\".Normalize(System.Text.NormalizationForm.FormD).[0]) then printfn \\\"Difference detected at u{1:X4}\\\"; exit 1\", v, i++);"
-printfn "       }"
-printfn "       System.Console.WriteLine(\"exit 0 // if we get here, all is good!\");"
-printfn "    }"
-printfn "}"
+open System
+open System.IO
+
+let outfile =
+    fsi.CommandLineArgs
+    |> Array.skipWhile((<>) "--")
+    |> Array.skip 1
+    |> Array.head
+let content =
+    [
+        sprintf "using System.Collections.Generic;"
+        sprintf "public class CSharpLibrary"
+        sprintf "{"
+        sprintf "    static public IEnumerable<int> input()"
+        sprintf "    {"
+    ] @
+    [
+        for a in [0 .. 0x123] do
+            yield sprintf "        yield return (int)(\"\\u%04x\".Normalize(System.Text.NormalizationForm.FormD)[0]);" a
+    ] @
+    [
+        sprintf "    }"
+        sprintf "    static void Main(string[] args)"
+        sprintf "    {"
+        sprintf "       int i = 0;"
+        sprintf "       var sb = new System.Text.StringBuilder();"
+        sprintf "       sb.AppendLine(\"module N.M\");"
+        sprintf "       foreach(var v in input())"
+        sprintf "       {"
+        sprintf "           sb.AppendLine(System.String.Format(\"if {0} <> int (\\\"\\\\u{1:X4}\\\".Normalize(System.Text.NormalizationForm.FormD).[0]) then printfn \\\"Difference detected at u{1:X4}\\\"; exit 1\", v, i++));"
+        sprintf "       }"
+        sprintf "       sb.AppendLine(\"exit 0 // if we get here, all is good!\");"
+        sprintf "       System.IO.File.WriteAllText(args[0], sb.ToString());"
+        sprintf "    }"
+        sprintf "}"
+    ]
+
+File.WriteAllText(outfile, String.Join("\n", content))
